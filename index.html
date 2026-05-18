@@ -1,9 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Irfan Foods ERP – Complete</title>
+    <!-- Firebase Compat SDKs (global scripts) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -1066,6 +1070,25 @@
         addAudit('Allocation','Deleted transaction');
         save();
     }
+</script>
+
+<!-- Firebase Initialization (Compat / Global) -->
+<script>
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyApS8WHJLTui4r0xMCX_5rXEu8B4-7a7MI",
+        authDomain: "irfan-c1be0.firebaseapp.com",
+        projectId: "irfan-c1be0",
+        storageBucket: "irfan-c1be0.firebasestorage.app",
+        messagingSenderId: "561044513175",
+        appId: "1:561044513175:web:5c8b977fa334c3ecc1a4d2",
+        measurementId: "G-NK718RB038"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const analytics = firebase.analytics();
+    console.log('Firebase initialized successfully ✅');
 </script>
 </body>
 </html>
