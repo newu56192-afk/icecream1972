@@ -3,18 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Irfan Foods ERP – Firebase Edition</title>
+    <title>Irfan Foods ERP – Complete</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <!-- Firebase SDK (v9 compat) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
     <style>
-        /* ... your existing CSS styles (unchanged) ... */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         :root {
             --bg: #0a0a10;
@@ -53,7 +47,226 @@
             overflow: hidden;
             transition: background 0.4s, color 0.4s;
         }
-        /* (the rest of your CSS – exactly as before – stays here) */
+        #login-screen {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+                        url('https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=1350&q=80');
+            background-size: cover; background-position: center;
+            display: flex; align-items:center; justify-content:center; z-index:9999;
+        }
+        .login-box {
+            background: rgba(20,20,30,0.85); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.15); border-radius: 28px;
+            padding: 3rem 2.5rem; width: 400px; text-align: center;
+            animation: floatIn 0.6s ease;
+        }
+        @keyframes floatIn {
+            from { opacity:0; transform: translateY(30px) scale(0.95); }
+            to { opacity:1; transform: translateY(0) scale(1); }
+        }
+        .login-box h2 {
+            font-weight: 700; font-size: 2rem; letter-spacing: 2px;
+            background: linear-gradient(135deg, #f0b90b, #f7d84a);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+        }
+        .login-box input {
+            width:100%; padding:14px; margin-bottom:1.2rem; border-radius: 14px;
+            border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.06);
+            color:#fff; font-size:1rem; outline:none; transition:0.3s;
+        }
+        .login-box input:focus { border-color: #f0b90b; background:rgba(255,255,255,0.12); }
+        .login-box button {
+            width:100%; padding:14px; border:none; border-radius: 14px;
+            background: linear-gradient(135deg, #f0b90b, #e0a800);
+            color:#000; font-weight:700; font-size:1rem; letter-spacing:1px;
+            cursor:pointer; transition:0.3s; box-shadow:0 10px 25px rgba(240,185,11,0.3);
+        }
+        .login-box button:hover { transform: translateY(-2px); box-shadow:0 15px 35px rgba(240,185,11,0.5); }
+        #main-app { display:none; height:100vh; }
+        .sidebar {
+            width: var(--sidebar-w); background: var(--surface);
+            border-right:1px solid var(--border); display:flex; flex-direction:column;
+            overflow-y:auto; padding:1rem 0; gap:0.15rem;
+        }
+        .logo {
+            text-align:center; padding:0.4rem 0.8rem 1rem; border-bottom:1px solid var(--border);
+            font-weight:800; font-size:1.3rem; letter-spacing:1px;
+            background: linear-gradient(135deg, #f0b90b, #f7d84a);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .nav-item {
+            padding: 0.6rem 1.3rem; margin:0 0.5rem; border-radius:10px;
+            cursor:pointer; color: var(--text-dim); font-weight:500; font-size:0.82rem;
+            transition: all 0.25s; display:flex; align-items:center; gap:7px;
+        }
+        .nav-item i { font-style:normal; font-size:1rem; }
+        .nav-item:hover { background: var(--primary-soft); color: var(--primary); }
+        .nav-item.active { background: var(--primary-soft); color: var(--primary); font-weight:600; }
+        .main-view { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+        .header {
+            height:60px; background:var(--surface); border-bottom:1px solid var(--border);
+            display:flex; align-items:center; justify-content:space-between; padding:0 1.6rem;
+        }
+        .page { display:none; animation: fadeSlide 0.4s ease; padding:1.2rem; overflow-y:auto; height:100%; }
+        .page.active { display:block; }
+        @keyframes fadeSlide { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        /* ============ HOME PAGE ============ */
+        .home-hero {
+            text-align: center; padding: 2rem 1rem;
+            background: radial-gradient(circle at 50% 0%, rgba(240,185,11,0.1) 0%, transparent 60%);
+            border-radius: var(--radius); margin-bottom: 1.5rem;
+        }
+        .home-hero .hero-icon { font-size: 4rem; margin-bottom: 0.5rem; }
+        .home-hero h1 {
+            font-size: 2rem; font-weight: 700;
+            background: linear-gradient(135deg, #f0b90b, #f5d547);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            margin-bottom: 0.3rem;
+        }
+        .home-hero p { color: var(--text-dim); font-size: 0.95rem; }
+        .quick-stats {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 0.8rem; margin-bottom: 1.5rem;
+        }
+        .quick-stat {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 1rem; text-align: center; transition: transform 0.2s;
+        }
+        .quick-stat:hover { transform: translateY(-3px); }
+        .quick-stat .num { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .quick-stat .lbl { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem; }
+        .home-actions {
+            display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center;
+        }
+        .home-actions button {
+            padding: 0.7rem 1.5rem; border-radius: 10px; font-weight: 600; cursor: pointer;
+            transition: 0.3s; font-size: 0.85rem; border: none;
+        }
+        .home-actions .btn-gold { background: linear-gradient(135deg, #f0b90b, #e0a800); color:#000; }
+        .home-actions .btn-out { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+        .home-actions button:hover { transform: translateY(-2px); }
+
+        /* ============ DASHBOARD ============ */
+        .dash-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap:0.7rem; margin-bottom:1.2rem; }
+        .dash-card {
+            background: var(--surface); border-radius: var(--radius); padding:1rem 1.1rem;
+            position:relative; overflow:hidden; border: 1px solid var(--border);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .dash-card::before {
+            content:''; position:absolute; top:-1px; left:-1px; right:-1px; bottom:-1px;
+            border-radius: var(--radius); z-index:-1;
+            background: linear-gradient(135deg, transparent 40%, rgba(240,185,11,0.25));
+            opacity:0; transition: opacity 0.4s;
+        }
+        .dash-card:hover::before { opacity:1; }
+        .dash-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.7); }
+        .dash-card .icon { font-size:1.6rem; margin-bottom:0.3rem; }
+        .dash-card h3 { font-size:0.72rem; color:var(--text-dim); font-weight:500; text-transform:uppercase; letter-spacing:0.5px; }
+        .dash-card .val {
+            font-size:1.5rem; font-weight:700; margin-top:0.1rem;
+            background: linear-gradient(135deg, #f0b90b, #f5d547);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .dash-card.expense .val { background: linear-gradient(135deg, #ff3860, #ff6b6b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .dash-card.profit .val { background: linear-gradient(135deg, #23d160, #48e080); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .chart-card {
+            background: var(--surface); border:1px solid var(--border); border-radius: var(--radius);
+            padding:1.2rem; position:relative; overflow:hidden;
+        }
+        .chart-card::after {
+            content:''; position:absolute; top:0; left:0; right:0; bottom:0;
+            border-radius: var(--radius);
+            background: radial-gradient(circle at 30% 70%, rgba(240,185,11,0.06) 0%, transparent 50%);
+            pointer-events:none;
+        }
+        .chart-wrap { max-width:280px; margin:0 auto; position:relative; z-index:1; }
+        .chart-center {
+            position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+            text-align:center; z-index:2;
+        }
+        .chart-center .big { font-size:1.4rem; font-weight:700; color:var(--primary); }
+        .chart-center .small { font-size:0.7rem; color:var(--text-dim); }
+
+        /* ============ COMMON ============ */
+        .card {
+            background: var(--surface); border:1px solid var(--border); border-radius: var(--radius);
+            padding: 1.2rem; box-shadow: var(--shadow); margin-bottom:1.2rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 20px 35px rgba(0,0,0,0.6); }
+        .low-stock-list { display:flex; flex-direction:column; gap:0.4rem; }
+        .stock-row {
+            display:flex; align-items:center; justify-content:space-between; background:var(--surface-light);
+            padding:0.4rem 0.8rem; border-radius:8px; border-left:4px solid var(--danger);
+            transition: background 0.2s; font-size:0.82rem;
+        }
+        .stock-row:hover { background: var(--primary-soft); }
+        .progress-bg { width:70px; height:5px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; }
+        .progress-fill { height:100%; background:linear-gradient(90deg, var(--danger), #ff6b6b); border-radius:3px; }
+        table { width:100%; border-collapse:collapse; background:var(--surface); border-radius:var(--radius); overflow:hidden; }
+        th { background:var(--surface-light); color:var(--primary); padding:0.7rem 0.8rem; text-align:left; font-weight:600; font-size:0.8rem; }
+        td { padding:0.6rem 0.8rem; border-bottom:1px solid var(--border); font-size:0.82rem; }
+        tr.low-stock-row { background: rgba(255,56,96,0.10); }
+        input, select {
+            background: var(--surface-light); border:1px solid var(--border); color: var(--text);
+            padding:0.55rem 0.7rem; border-radius:8px; font-size:0.82rem; outline:none; width:100%; transition:0.2s;
+        }
+        input:focus, select:focus { border-color: var(--primary); }
+        button.gold {
+            background: linear-gradient(135deg, #f0b90b, #e0a800); color:#000;
+            font-weight:600; border:none; padding:0.55rem 1.3rem; border-radius:8px;
+            cursor:pointer; transition:0.3s; box-shadow:0 6px 15px rgba(240,185,11,0.2);
+            font-size:0.82rem;
+        }
+        button.gold:hover { transform: translateY(-2px); box-shadow:0 10px 22px rgba(240,185,11,0.4); }
+        .btn-outline {
+            background:transparent; border:1px solid var(--primary); color:var(--primary);
+            padding:0.5rem 1.1rem; border-radius:8px; cursor:pointer; transition:0.3s; font-size:0.82rem;
+        }
+        .btn-outline:hover { background:var(--primary-soft); }
+        .flex-row { display:flex; gap:0.7rem; flex-wrap:wrap; align-items:flex-end; }
+        .field-group { flex:1; min-width:120px; }
+        .field-heading { font-size:0.65rem; color:var(--primary); margin-bottom:0.1rem; font-weight:600; }
+        .modal {
+            display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.7); align-items:center; justify-content:center; z-index:9999;
+        }
+        .modal-content {
+            background:var(--surface); border:1px solid var(--border); border-radius:20px;
+            padding:1.5rem; max-width:420px; width:90%; animation: floatIn 0.3s;
+        }
+        .ticker {
+            position:fixed; bottom:0; left:0; width:100%; background:#150a0a;
+            border-top:1px solid var(--primary); color:#ffaaaa; padding:0.3rem 1rem;
+            font-weight:600; z-index:999; font-size:0.8rem;
+        }
+        .code-display {
+            background:var(--primary-soft); color:var(--primary); font-weight:700;
+            text-align:center; border:1px solid var(--primary); padding:0.45rem;
+            border-radius:8px; pointer-events:none; font-size:0.82rem;
+        }
+        .report-list { display: flex; flex-direction: column; gap: 0.6rem; }
+        .report-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--surface-light); padding: 0.8rem 1rem; border-radius: 10px;
+            transition: background 0.2s, transform 0.2s;
+        }
+        .report-item:hover { background: var(--primary-soft); transform: translateX(4px); }
+        .report-item span { font-weight: 500; font-size: 0.85rem; }
+        .report-actions { display: flex; gap: 0.35rem; }
+        .report-actions button {
+            background: var(--primary); color: #000; border: none;
+            padding: 0.35rem 0.9rem; border-radius: 6px; font-weight: 600; cursor: pointer;
+            transition: 0.2s; font-size: 0.78rem;
+        }
+        .report-actions button:last-child { background: var(--surface); color: var(--primary); border: 1px solid var(--primary); }
+        .action-icons { display: flex; gap: 5px; }
+        .action-icons span { cursor:pointer; font-size:1rem; transition:0.2s; padding:2px; }
+        .action-icons span:hover { transform: scale(1.25); }
+        .edit-icon { color: var(--primary); }
+        .del-icon { color: var(--danger); }
     </style>
 </head>
 <body onload="checkLogin()">
@@ -67,7 +280,240 @@
 </div>
 
 <div id="main-app">
-    <!-- your existing HTML structure unchanged -->
+    <div class="sidebar">
+        <div class="logo">IRFAN FOODS</div>
+        <div class="nav-item active" onclick="tab('home',this)"><i>🏠</i> Home</div>
+        <div class="nav-item" onclick="tab('dash',this)"><i>📊</i> Dashboard</div>
+        <div class="nav-item" onclick="tab('items',this)"><i>🏗️</i> Item Master</div>
+        <div class="nav-item" onclick="tab('inventory',this)"><i>📦</i> Inventory</div>
+        <div class="nav-item" onclick="tab('stockcard',this)"><i>📇</i> Stock Card</div>
+        <div class="nav-item" onclick="tab('cash',this)"><i>💰</i> Cashbook</div>
+        <div class="nav-item" onclick="tab('reports',this)"><i>📉</i> Reports</div>
+        <div class="nav-item" onclick="tab('meter',this)"><i>🔌</i> Meter</div>
+        <div class="nav-item" onclick="tab('allocations',this)"><i>💼</i> Allocations</div>
+        <div class="nav-item" onclick="openAdminModal()" style="margin-top:auto;"><i>⚙️</i> Admin</div>
+        <div class="nav-item" onclick="logout()" style="color:#ff3860;">🚪 Logout</div>
+    </div>
+    <div class="main-view">
+        <div class="header">
+            <h2 id="page-title" style="font-weight:600;">Home</h2>
+            <button class="btn-outline" onclick="toggleTheme()">🌓 Theme</button>
+        </div>
+        <div style="flex:1; overflow-y:auto;">
+            <!-- HOME PAGE -->
+            <div id="home" class="page active">
+                <div class="home-hero">
+                    <div class="hero-icon">🍦</div>
+                    <h1>Welcome to Irfan Foods ERP</h1>
+                    <p id="home-date">Your complete business management system</p>
+                </div>
+                <div class="quick-stats" id="home-stats">
+                    <div class="quick-stat"><div class="num" id="hs-items">0</div><div class="lbl">Total Products</div></div>
+                    <div class="quick-stat"><div class="num" id="hs-stockval">RS 0</div><div class="lbl">Inventory Value</div></div>
+                    <div class="quick-stat"><div class="num" id="hs-cash">RS 0</div><div class="lbl">Net Cash</div></div>
+                    <div class="quick-stat"><div class="num" id="hs-low">0</div><div class="lbl">Low Stock Items</div></div>
+                </div>
+                <div class="home-actions">
+                    <button class="btn-gold" onclick="tab('inventory',document.querySelectorAll('.nav-item')[3])">📦 Go to Inventory</button>
+                    <button class="btn-out" onclick="tab('dash',document.querySelectorAll('.nav-item')[2])">📊 Open Dashboard</button>
+                </div>
+            </div>
+
+            <!-- DASHBOARD -->
+            <div id="dash" class="page">
+                <div class="dash-grid">
+                    <div class="dash-card"><div class="icon">💰</div><h3>Total Income</h3><div class="val" id="d-in">RS 0</div></div>
+                    <div class="dash-card expense"><div class="icon">📤</div><h3>Total Expense</h3><div class="val" id="d-out">RS 0</div></div>
+                    <div class="dash-card"><div class="icon">📦</div><h3>Inventory Value</h3><div class="val" id="d-stock">RS 0</div></div>
+                    <div class="dash-card profit"><div class="icon">📈</div><h3>Net Position</h3><div class="val" id="d-profit">RS 0</div></div>
+                    <div class="dash-card profit"><div class="icon">💵</div><h3>Total Cash</h3><div class="val" id="d-cash">RS 0</div></div>
+                    <div class="dash-card"><div class="icon">🪙</div><h3>Allocated Funds</h3><div class="val" id="d-alloc">RS 0</div></div>
+                    <div class="dash-card expense"><div class="icon">🧾</div><h3>Inventory Expense</h3><div class="val" id="d-invexp">RS 0</div></div>
+                    <div class="dash-card profit"><div class="icon">🪪</div><h3>Available Cash</h3><div class="val" id="d-availcash">RS 0</div></div>
+                </div>
+                <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                    <div class="chart-card" style="flex:1; min-width:260px;">
+                        <h3 style="margin-bottom:0.6rem; font-size:0.9rem;">📊 Asset Distribution</h3>
+                        <div class="chart-wrap"><canvas id="donutChart"></canvas>
+                            <div class="chart-center"><div class="big" id="chartTotalInv">RS 0</div><div class="small">Total Assets</div></div>
+                        </div>
+                    </div>
+                    <div class="card" style="flex:1; min-width:260px;">
+                        <h3 style="margin-bottom:0.6rem; font-size:0.9rem;">⚠️ Low Stock Alerts</h3>
+                        <div class="low-stock-list" id="lowStockContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ITEM MASTER -->
+            <div id="items" class="page">
+                <div class="card">
+                    <h3>Register Product</h3>
+                    <div class="flex-row">
+                        <div class="field-group"><input id="mName" placeholder="Item Name"></div>
+                        <div class="field-group"><input type="number" id="mMinLevel" placeholder="Min Stock (5)" value="5"></div>
+                        <button class="gold" onclick="addMaster()">➕ Add</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <table><thead><tr><th>ID</th><th>Name</th><th>Min Level</th><th>Action</th></tr></thead><tbody id="m-list"></tbody></table>
+                </div>
+            </div>
+
+            <!-- INVENTORY -->
+            <div id="inventory" class="page">
+                <div class="card">
+                    <h3>📥 Stock IN (Purchase)</h3>
+                    <div class="flex-row">
+                        <div class="field-group"><label class="field-heading">Search Item</label><input id="sSearch" list="mList" oninput="showItemHint(this.value)" placeholder="Type to search"><datalist id="mList"></datalist></div>
+                        <div class="field-group"><label class="field-heading">Code</label><input id="sCode" readonly class="code-display"></div>
+                        <div class="field-group"><label class="field-heading">Available</label><input id="sAvail" readonly class="code-display"></div>
+                        <div class="field-group"><label class="field-heading">Date</label><input type="date" id="sDate"></div>
+                        <div class="field-group"><label class="field-heading">Qty</label><input type="number" id="sQty"></div>
+                        <div class="field-group"><label class="field-heading">Rate</label><input type="number" id="sPrice"></div>
+                        <button class="gold" onclick="stockIn()">📥 Post IN</button>
+                    </div>
+                    <div id="rateHint" style="margin-top:0.3rem; font-size:0.75rem; color:var(--text-dim);"></div>
+                </div>
+                <div class="card">
+                    <h3>📤 Stock OUT (Consumption)</h3>
+                    <div class="flex-row">
+                        <div class="field-group"><label class="field-heading">Search Item</label><input id="sOutName" list="sList" oninput="loadOutCode(this.value)"><datalist id="sList"></datalist></div>
+                        <div class="field-group"><label class="field-heading">Code</label><input id="sOutCode" readonly class="code-display"></div>
+                        <div class="field-group"><label class="field-heading">Available</label><input id="sOutAvail" readonly class="code-display"></div>
+                        <div class="field-group"><label class="field-heading">Date</label><input type="date" id="sOutDate"></div>
+                        <div class="field-group"><label class="field-heading">Qty</label><input type="number" id="sOutQty"></div>
+                        <button class="gold" style="background:#ff3860;" onclick="stockOut()">📤 Post OUT</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>Current Stock</h3>
+                    <table><thead><tr><th>ID</th><th>Item</th><th>Qty</th><th>Min Lvl</th><th>Avg Rate</th><th>Value</th><th>Actions</th></tr></thead><tbody id="s-display"></tbody></table>
+                </div>
+                <div class="card">
+                    <h3>Consumption History (Last 15)</h3>
+                    <table><thead><tr><th>Date</th><th>ID</th><th>Item</th><th>Qty</th><th>Value</th><th>Actions</th></tr></thead><tbody id="s-out-list"></tbody></table>
+                </div>
+            </div>
+
+            <!-- STOCK CARD -->
+            <div id="stockcard" class="page">
+                <div class="card">
+                    <h3>📇 Item Movement</h3>
+                    <div class="flex-row">
+                        <div class="field-group"><input id="cardSearch" list="mList" placeholder="Item"></div>
+                        <div class="field-group"><input type="date" id="cardFrom"></div>
+                        <div class="field-group"><input type="date" id="cardTo"></div>
+                        <button class="gold" onclick="genStockCard()">View</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <table><thead><tr><th>Date</th><th>Type</th><th>IN</th><th>OUT</th><th>Rate</th><th>Balance</th></tr></thead><tbody id="cardBody"></tbody></table>
+                </div>
+            </div>
+
+            <!-- CASHBOOK -->
+            <div id="cash" class="page">
+                <div class="card">
+                    <div class="flex-row">
+                        <div class="field-group"><input type="date" id="cDate"></div>
+                        <div class="field-group"><select id="cType"><option>In</option><option>Out</option></select></div>
+                        <div class="field-group"><input id="cDesc" placeholder="Description"></div>
+                        <div class="field-group"><input type="number" id="cAmt" placeholder="Amount"></div>
+                        <button class="gold" onclick="addCash()">Add</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <table><thead><tr><th>Date</th><th>Type</th><th>Desc</th><th>Amount</th><th>Actions</th></tr></thead><tbody id="c-list"></tbody></table>
+                </div>
+            </div>
+
+            <!-- REPORTS -->
+            <div id="reports" class="page">
+                <div class="card">
+                    <h3>📊 Reports</h3>
+                    <div class="flex-row" style="margin-bottom:1rem;">
+                        <div class="field-group"><label>From</label><input type="date" id="repFrom"></div>
+                        <div class="field-group"><label>To</label><input type="date" id="repTo"></div>
+                    </div>
+                    <div class="report-list">
+                        <div class="report-item"><span>📦 Inventory Valuation</span><div class="report-actions"><button onclick="genRep('stock_status','pdf')">PDF</button><button onclick="genRep('stock_status','excel')">Excel</button></div></div>
+                        <div class="report-item"><span>💰 Profit & Loss</span><div class="report-actions"><button onclick="genRep('pl','pdf')">PDF</button><button onclick="genRep('pl','excel')">Excel</button></div></div>
+                        <div class="report-item"><span>📝 Cashbook</span><div class="report-actions"><button onclick="genRep('cashbook','pdf')">PDF</button><button onclick="genRep('cashbook','excel')">Excel</button></div></div>
+                        <div class="report-item"><span>🔄 Stock Movement</span><div class="report-actions"><button onclick="genRep('stock_history','pdf')">PDF</button><button onclick="genRep('stock_history','excel')">Excel</button></div></div>
+                        <div class="report-item"><span>⚠️ Low Stock Items</span><div class="report-actions"><button onclick="genRep('lowstock','pdf')">PDF</button><button onclick="genRep('lowstock','excel')">Excel</button></div></div>
+                        <div class="report-item"><span>📋 Audit Trail</span><div class="report-actions"><button onclick="genRep('audit','pdf')">PDF</button><button onclick="genRep('audit','excel')">Excel</button></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- METER READING -->
+            <div id="meter" class="page">
+                <div class="card">
+                    <h3>📈 Enter Meter Reading</h3>
+                    <div class="flex-row">
+                        <div class="field-group"><input type="date" id="meterDate"></div>
+                        <div class="field-group"><input type="number" id="meterRead" placeholder="Reading"></div>
+                        <button class="gold" onclick="addMeter()">Save</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <table><thead><tr><th>Date</th><th>Reading</th><th>Actions</th></tr></thead><tbody id="meter-list"></tbody></table>
+                    <div style="margin-top:0.8rem; font-weight:600;">Total Consumption: <span id="totalConsumed">0</span> units</div>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <h3>⚡ Average Daily Usage</h3>
+                    <div id="avgDailyText" style="font-size:2rem; color:var(--primary);">0.00</div>
+                    <div style="opacity:0.7;">units/day</div>
+                </div>
+            </div>
+
+            <!-- ALLOCATION TRACKER -->
+            <div id="allocations" class="page">
+                <div class="card">
+                    <h3>💼 Daily Envelope Allocation</h3>
+                    <div class="flex-row" style="margin-bottom:1rem;">
+                        <div class="field-group"><label class="field-heading">Category</label><select id="allocCat"><option>Milk Powder</option><option>Electricity</option><option>Miscellaneous</option></select></div>
+                        <div class="field-group"><label class="field-heading">Date</label><input type="date" id="allocDate"></div>
+                        <div class="field-group"><label class="field-heading">Amount</label><input type="number" id="allocAmt" value="1000"></div>
+                        <button class="gold" onclick="addAllocation()">➕ Add Allocation</button>
+                    </div>
+                    <div class="flex-row" style="margin-bottom:1rem;">
+                        <div class="field-group"><label class="field-heading">Category</label><select id="expCat"><option>Milk Powder</option><option>Electricity</option><option>Miscellaneous</option></select></div>
+                        <div class="field-group"><label class="field-heading">Date</label><input type="date" id="expDate"></div>
+                        <div class="field-group"><label class="field-heading">Description</label><input id="expDesc" placeholder="e.g., Bill"></div>
+                        <div class="field-group"><label class="field-heading">Amount</label><input type="number" id="expAmt"></div>
+                        <button class="gold" style="background:#ff3860;" onclick="addAllocationExpense()">📤 Record Expense</button>
+                    </div>
+                </div>
+                <div id="allocCards" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:0.8rem;"></div>
+                <div class="card" style="margin-top:1rem;">
+                    <h3>Recent Transactions</h3>
+                    <table><thead><tr><th>Date</th><th>Category</th><th>Type</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead><tbody id="allocLog"></tbody></table>
+                </div>
+            </div>
+
+            <!-- ADMIN -->
+            <div id="admin" class="page">
+                <div class="card">
+                    <h3>🔐 Security & Backup</h3>
+                    <button class="gold" onclick="exportBackup()">📥 Export Backup</button>
+                    <input type="file" id="importFile" onchange="importBackup(this)" style="margin:0.7rem 0; display:block;">
+                    <hr style="margin:0.8rem 0; border-color:var(--border);">
+                    <input type="password" id="newPass" placeholder="New Password" style="margin-bottom:0.5rem;">
+                    <button class="gold" onclick="changePass()">Change Password</button>
+                    <input type="password" id="newAdminCode" placeholder="New Admin Code" style="margin:0.5rem 0;">
+                    <button class="gold" onclick="changeAdminCode()">Change Admin Code</button>
+                </div>
+                <div class="card">
+                    <h3>📋 Audit Log</h3>
+                    <table><thead><tr><th>Time</th><th>Module</th><th>Details</th></tr></thead><tbody id="audit-list"></tbody></table>
+                    <button class="gold" onclick="clearAudit()" style="margin-top:0.4rem;">Clear Log</button>
+                </div>
+            </div>
+        </div>
+        <div class="ticker"><marquee id="tickerText">✅ All stocks above minimum level.</marquee></div>
+    </div>
 </div>
 
 <!-- ADMIN MODAL -->
@@ -83,188 +529,77 @@
 </div>
 
 <script>
-    // ---------- FIREBASE SETUP ----------
-    const firebaseConfig = {
-        apiKey: "AIzaSyApS8WHJLTui4r0xMCX_5rXEu8B4-7a7MI",
-        authDomain: "irfan-c1be0.firebaseapp.com",
-        projectId: "irfan-c1be0",
-        storageBucket: "irfan-c1be0.firebasestorage.app",
-        messagingSenderId: "561044513175",
-        appId: "1:561044513175:web:5c8b977fa334c3ecc1a4d2",
-        measurementId: "G-NK718RB038"
-    };
-
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const dbFirestore = firebase.firestore();
-    // Enable offline persistence (optional)
-    dbFirestore.enablePersistence().catch((err) => {
-        if (err.code == 'failed-precondition') {
-            console.warn('Multiple tabs open, persistence only works in one tab');
-        } else if (err.code == 'unimplemented') {
-            console.warn('Browser does not support persistence');
-        }
-    });
-
-    // ---------- GLOBAL DATABASE ----------
-    // We keep a local cache of the data to avoid excessive Firestore reads.
-    // Firestore document ID: "data/main"
-    let db = {
-        items: [], stock: {}, cash: [], stock_logs: [],
-        meterReadings: [], audit: [], pass: '12', adminCode: '11',
-        env: { milk: [], elec: [], misc: [] }
-    };
-
-    // Load data from Firestore on startup
-    async function loadFromFirestore() {
+    // ========== DATABASE ==========
+    let db = (() => {
         try {
-            const docRef = dbFirestore.collection('data').doc('main');
-            const docSnap = await docRef.get();
-            if (docSnap.exists) {
-                db = docSnap.data();
-                // Ensure all required fields exist
-                if (!db.audit) db.audit = [];
-                if (!db.meterReadings) db.meterReadings = [];
-                if (!db.env) db.env = { milk: [], elec: [], misc: [] };
-                db.items.forEach(i => { if (i.minLevel === undefined) i.minLevel = 5; });
-                return true;
-            } else {
-                // No data found – use default db and push it to Firestore
-                await saveToFirestore();
-                return true;
-            }
-        } catch (error) {
-            console.error('Firestore load error:', error);
-            // Fallback to localStorage
             let raw = localStorage.getItem('irfan_final_v4');
             if (raw) {
-                try {
-                    let d = JSON.parse(raw);
-                    if (d.items) db = d;
-                } catch (e) {}
+                let d = JSON.parse(raw);
+                if (!d.audit) d.audit = [];
+                if (!d.meterReadings) d.meterReadings = [];
+                if (!d.env) d.env = { milk:[], elec:[], misc:[] };
+                d.items.forEach(i=>{ if(i.minLevel===undefined) i.minLevel=5; });
+                return d;
             }
-            return false;
-        }
-    }
+        } catch(e){}
+        return { items:[], stock:{}, cash:[], stock_logs:[], meterReadings:[], audit:[], pass:'12', adminCode:'11', env:{ milk:[], elec:[], misc:[] } };
+    })();
+    if(!db.audit) db.audit=[];
+    if(!db.meterReadings) db.meterReadings=[];
+    if(!db.env) db.env = { milk:[], elec:[], misc:[] };
+    db.items.forEach(i=>{ if(i.minLevel===undefined) i.minLevel=5; });
+    let donutChart;
 
-    // Save data to Firestore (overwrite the entire document)
-    async function saveToFirestore() {
-        try {
-            const docRef = dbFirestore.collection('data').doc('main');
-            await docRef.set(db, { merge: false });
-            // Also update localStorage as cache
-            localStorage.setItem('irfan_final_v4', JSON.stringify(db));
-        } catch (error) {
-            console.error('Firestore save error:', error);
-            // Fallback save to localStorage
-            localStorage.setItem('irfan_final_v4', JSON.stringify(db));
-        }
-    }
-
-    // Listen for real-time updates from Firestore (optional)
-    function listenToFirestore() {
-        dbFirestore.collection('data').doc('main').onSnapshot((doc) => {
-            if (doc.exists) {
-                const newDb = doc.data();
-                // Check if data actually changed to avoid infinite loop
-                if (JSON.stringify(newDb) !== JSON.stringify(db)) {
-                    db = newDb;
-                    // Ensure fields
-                    if (!db.audit) db.audit = [];
-                    if (!db.meterReadings) db.meterReadings = [];
-                    if (!db.env) db.env = { milk: [], elec: [], misc: [] };
-                    db.items.forEach(i => { if (i.minLevel === undefined) i.minLevel = 5; });
-                    renderAll();
-                    if (document.getElementById('allocations').classList.contains('active')) renderAllocations();
-                    if (document.getElementById('dash').classList.contains('active')) updateDash();
-                    updateHome();
-                }
-            }
-        });
-    }
-
-    // ---------- ORIGINAL FUNCTIONS (modified to use Firestore) ----------
-    // Replace all direct localStorage calls with Firestore operations
-    // The save() function now calls saveToFirestore()
-    async function save() {
-        await saveToFirestore();
+    function save() {
+        localStorage.setItem('irfan_final_v4', JSON.stringify(db));
         renderAll();
-        if (document.getElementById('allocations').classList.contains('active')) renderAllocations();
-        if (document.getElementById('dash').classList.contains('active')) updateDash();
+        if(document.getElementById('allocations').classList.contains('active')) renderAllocations();
+        if(document.getElementById('dash').classList.contains('active')) updateDash();
     }
+    function extractName(s) { if(!s) return ''; let i=s.lastIndexOf(' ('); return i===-1?s.trim():s.substring(0,i).trim(); }
+    function getItemCode(name) { let it=db.items.find(i=>i.name===name); return it?it.id:'???'; }
+    function addAudit(mod, det) { db.audit.unshift({time:new Date().toISOString(), module:mod, details:det}); if(db.audit.length>200) db.audit.pop(); save(); }
 
-    // On page load
-    async function initializeApp() {
-        await loadFromFirestore();
-        listenToFirestore();   // enable real-time sync
-        renderAll();
-        updateDash();
-        updateHome();
-    }
-
-    function extractName(s) {
-        if (!s) return '';
-        let i = s.lastIndexOf(' (');
-        return i === -1 ? s.trim() : s.substring(0, i).trim();
-    }
-    function getItemCode(name) {
-        let it = db.items.find(i => i.name === name);
-        return it ? it.id : '???';
-    }
-    function addAudit(mod, det) {
-        db.audit.unshift({ time: new Date().toISOString(), module: mod, details: det });
-        if (db.audit.length > 200) db.audit.pop();
-        save();
-    }
-
-    // Login (unchanged except using db.pass from Firestore)
+    // ========== LOGIN ==========
     function doLogin() {
-        if (document.getElementById('user').value === 'irfan' && document.getElementById('pass').value === db.pass) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('main-app').style.display = 'flex';
-            sessionStorage.setItem('logged', '1');
-            setDates();
-            initializeApp(); // load data after login
-        } else {
-            alert('Invalid credentials!');
-        }
+        if(document.getElementById('user').value==='irfan' && document.getElementById('pass').value===db.pass) {
+            document.getElementById('login-screen').style.display='none';
+            document.getElementById('main-app').style.display='flex';
+            sessionStorage.setItem('logged','1'); setDates(); renderAll(); updateDash(); updateHome();
+        } else alert('Invalid credentials!');
     }
-
-    async function checkLogin() {
-        if (sessionStorage.getItem('logged')) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('main-app').style.display = 'flex';
-            setDates();
-            await initializeApp();
+    function checkLogin() {
+        if(sessionStorage.getItem('logged')) {
+            document.getElementById('login-screen').style.display='none';
+            document.getElementById('main-app').style.display='flex';
+            setDates(); renderAll(); updateDash(); updateHome();
         }
-        if (localStorage.getItem('theme') === 'light') document.body.classList.add('light-mode');
+        if(localStorage.getItem('theme')==='light') document.body.classList.add('light-mode');
     }
-
     function tab(id, el) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-        if (el) el.classList.add('active');
-        document.getElementById('page-title').innerText = id === 'dash' ? 'Dashboard' : id === 'home' ? 'Home' : id.toUpperCase();
-        if (id === 'dash') updateDash();
-        if (id === 'meter') calcMeterAvg();
-        if (id === 'home') updateHome();
-        if (id === 'allocations') renderAllocations();
+        if(el) el.classList.add('active');
+        document.getElementById('page-title').innerText = id==='dash'?'Dashboard':id==='home'?'Home':id.toUpperCase();
+        if(id==='dash') updateDash();
+        if(id==='meter') calcMeterAvg();
+        if(id==='home') updateHome();
+        if(id==='allocations') renderAllocations();
         renderAll();
     }
-
-    function openAdminModal() { document.getElementById('admin-modal').style.display = 'flex'; }
-    function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; document.getElementById('adminCodeField').value = ''; }
+    function openAdminModal() { document.getElementById('admin-modal').style.display='flex'; }
+    function closeAdminModal() { document.getElementById('admin-modal').style.display='none'; document.getElementById('adminCodeField').value=''; }
     function verifyAdmin() {
-        if (document.getElementById('adminCodeField').value === (db.adminCode || '11')) {
+        if(document.getElementById('adminCodeField').value === (db.adminCode||'11')) {
             closeAdminModal();
             tab('admin', document.querySelectorAll('.nav-item')[8]);
-            addAudit('Admin', 'Access');
+            addAudit('Admin','Access');
         } else alert('Wrong Admin Code!');
     }
 
-    // ITEM MASTER
-    async function addMaster() {
+    // ========== ITEM MASTER ==========
+    function addMaster() {
         let name = document.getElementById('mName').value.trim();
         let minLevel = parseInt(document.getElementById('mMinLevel').value) || 5;
         if (!name) { alert('Please enter item name'); return; }
@@ -277,249 +612,228 @@
         let newId = 'ITM-' + String(newNum).padStart(3, '0');
         db.items.push({ id: newId, name: name, minLevel: minLevel });
         addAudit('Master', `Added item ${newId} - ${name}`);
-        await save();
+        save();
         document.getElementById('mName').value = '';
         document.getElementById('mMinLevel').value = '5';
     }
 
     function updateDatalists() {
-        document.getElementById('mList').innerHTML = db.items.map(i => `<option value="${i.name}">`).join('');
-        document.getElementById('sList').innerHTML = Object.keys(db.stock).map(n => `<option value="${n}">`).join('');
+        document.getElementById('mList').innerHTML = db.items.map(i=>`<option value="${i.name}">`).join('');
+        document.getElementById('sList').innerHTML = Object.keys(db.stock).map(n=>`<option value="${n}">`).join('');
     }
     function setDates() {
         let d = new Date().toISOString().split('T')[0];
-        ['sDate', 'sOutDate', 'cDate', 'cardFrom', 'cardTo', 'meterDate', 'repFrom', 'repTo', 'allocDate', 'expDate'].forEach(id => {
-            let el = document.getElementById(id);
-            if (el) el.value = d;
-        });
+        ['sDate','sOutDate','cDate','cardFrom','cardTo','meterDate','repFrom','repTo','allocDate','expDate'].forEach(id=>{ let el=document.getElementById(id); if(el) el.value=d; });
     }
     function showItemHint(raw) {
         let name = extractName(raw);
-        if (!name) { document.getElementById('sCode').value = ''; document.getElementById('sAvail').value = ''; return; }
+        if(!name) { document.getElementById('sCode').value=''; document.getElementById('sAvail').value=''; return; }
         document.getElementById('sCode').value = getItemCode(name);
-        let st = db.stock[name]; document.getElementById('sAvail').value = st ? st.qty : '0';
-        let last = db.stock_logs.filter(l => l.name === name && l.type === 'IN').pop();
-        if (last) { document.getElementById('rateHint').innerText = 'Last Purchase Rate: ' + last.price; document.getElementById('sPrice').value = last.price; }
-        else { document.getElementById('rateHint').innerText = ''; document.getElementById('sPrice').value = ''; }
+        let st = db.stock[name]; document.getElementById('sAvail').value = st?st.qty:'0';
+        let last = db.stock_logs.filter(l=>l.name===name && l.type==='IN').pop();
+        if(last) { document.getElementById('rateHint').innerText='Last Purchase Rate: '+last.price; document.getElementById('sPrice').value=last.price; }
+        else { document.getElementById('rateHint').innerText=''; document.getElementById('sPrice').value=''; }
     }
     function loadOutCode(raw) {
         let name = extractName(raw);
-        if (!name) { document.getElementById('sOutCode').value = ''; document.getElementById('sOutAvail').value = ''; return; }
+        if(!name) { document.getElementById('sOutCode').value=''; document.getElementById('sOutAvail').value=''; return; }
         document.getElementById('sOutCode').value = getItemCode(name);
-        let st = db.stock[name]; document.getElementById('sOutAvail').value = st ? st.qty : '0';
+        let st = db.stock[name]; document.getElementById('sOutAvail').value = st?st.qty:'0';
     }
 
-    // INVENTORY
-    async function stockIn() {
+    // ========== INVENTORY ==========
+    function stockIn() {
         let name = extractName(document.getElementById('sSearch').value);
-        let date = document.getElementById('sDate').value, q = parseFloat(document.getElementById('sQty').value), p = parseFloat(document.getElementById('sPrice').value);
-        if (!name || !date || isNaN(q) || q <= 0 || isNaN(p)) { alert('Fill correctly'); return; }
-        if (!db.items.find(i => i.name === name)) { alert('Item not in master'); return; }
-        if (!db.stock[name]) db.stock[name] = { qty: 0, price: 0 };
-        let totalCost = db.stock[name].qty * db.stock[name].price + q * p;
+        let date = document.getElementById('sDate').value, q=parseFloat(document.getElementById('sQty').value), p=parseFloat(document.getElementById('sPrice').value);
+        if(!name || !date || isNaN(q)||q<=0 || isNaN(p)) { alert('Fill correctly'); return; }
+        if(!db.items.find(i=>i.name===name)) { alert('Item not in master'); return; }
+        if(!db.stock[name]) db.stock[name]={qty:0, price:0};
+        let totalCost = db.stock[name].qty*db.stock[name].price + q*p;
         let newQty = db.stock[name].qty + q;
-        db.stock[name].price = totalCost / newQty; db.stock[name].qty = newQty;
-        db.stock_logs.push({ id: Date.now(), date, name, type: 'IN', qty: q, price: p });
-        addAudit('Stock', `IN ${name} x${q}`);
-        await save();
-        document.getElementById('sSearch').value = ''; document.getElementById('sCode').value = '';
-        document.getElementById('sAvail').value = ''; document.getElementById('sQty').value = ''; document.getElementById('sPrice').value = '';
-        document.getElementById('rateHint').innerText = '';
+        db.stock[name].price = totalCost/newQty; db.stock[name].qty = newQty;
+        db.stock_logs.push({id:Date.now(), date, name, type:'IN', qty:q, price:p});
+        addAudit('Stock',`IN ${name} x${q}`);
+        save();
+        document.getElementById('sSearch').value=''; document.getElementById('sCode').value='';
+        document.getElementById('sAvail').value=''; document.getElementById('sQty').value=''; document.getElementById('sPrice').value='';
+        document.getElementById('rateHint').innerText='';
     }
 
-    async function stockOut() {
+    function stockOut() {
         let name = extractName(document.getElementById('sOutName').value);
-        let date = document.getElementById('sOutDate').value, q = parseFloat(document.getElementById('sOutQty').value);
-        if (!name || !date || isNaN(q) || q <= 0) { alert('Fill correctly'); return; }
-        if (!db.stock[name] || db.stock[name].qty < q) { alert('Insufficient stock'); return; }
+        let date = document.getElementById('sOutDate').value, q=parseFloat(document.getElementById('sOutQty').value);
+        if(!name || !date || isNaN(q)||q<=0) { alert('Fill correctly'); return; }
+        if(!db.stock[name] || db.stock[name].qty<q) { alert('Insufficient stock'); return; }
         let rate = db.stock[name].price;
-        db.stock_logs.push({ id: Date.now(), date, name, type: 'OUT', qty: q, price: rate });
+        db.stock_logs.push({id:Date.now(), date, name, type:'OUT', qty:q, price:rate});
         db.stock[name].qty -= q;
-        addAudit('Stock', `OUT ${name} x${q}`);
-        await save();
-        document.getElementById('sOutName').value = ''; document.getElementById('sOutQty').value = '';
+        addAudit('Stock',`OUT ${name} x${q}`);
+        save();
+        document.getElementById('sOutName').value=''; document.getElementById('sOutQty').value='';
     }
 
     function genStockCard() {
-        let name = extractName(document.getElementById('cardSearch').value), from = document.getElementById('cardFrom').value, to = document.getElementById('cardTo').value, bal = 0;
-        let logs = db.stock_logs.filter(l => l.name === name && l.date >= from && l.date <= to).sort((a, b) => a.id - b.id);
-        document.getElementById('cardBody').innerHTML = logs.map(l => {
-            let i = l.type === 'IN' ? l.qty : 0, o = l.type === 'OUT' ? l.qty : 0; bal += i - o;
-            return `<tr><td>${l.date}</td><td>${l.type}</td><td>${i || '-'}</td><td>${o || '-'}</td><td>${l.price.toFixed(2)}</td><td><b>${bal}</b></td></tr>`;
-        }).join('') || '<tr><td colspan="6">No data</td></tr>';
+        let name=extractName(document.getElementById('cardSearch').value), from=document.getElementById('cardFrom').value, to=document.getElementById('cardTo').value, bal=0;
+        let logs=db.stock_logs.filter(l=>l.name===name&&l.date>=from&&l.date<=to).sort((a,b)=>a.id-b.id);
+        document.getElementById('cardBody').innerHTML = logs.map(l=>{ let i=l.type==='IN'?l.qty:0, o=l.type==='OUT'?l.qty:0; bal+=i-o; return `<tr><td>${l.date}</td><td>${l.type}</td><td>${i||'-'}</td><td>${o||'-'}</td><td>${l.price.toFixed(2)}</td><td><b>${bal}</b></td></tr>`; }).join('')||'<tr><td colspan="6">No data</td></tr>';
     }
 
-    // CASHBOOK
-    async function addCash() {
-        let d = document.getElementById('cDate').value, t = document.getElementById('cType').value, ds = document.getElementById('cDesc').value, a = parseFloat(document.getElementById('cAmt').value);
-        if (!d || !ds || isNaN(a)) return;
-        db.cash.push({ id: Date.now(), date: d, type: t, desc: ds, amt: a });
-        addAudit('Cash', `${t} ${ds} ${a}`);
-        await save();
-        document.getElementById('cDesc').value = ''; document.getElementById('cAmt').value = '';
+    // ========== CASHBOOK ==========
+    function addCash() {
+        let d=document.getElementById('cDate').value, t=document.getElementById('cType').value, ds=document.getElementById('cDesc').value, a=parseFloat(document.getElementById('cAmt').value);
+        if(!d||!ds||isNaN(a)) return;
+        db.cash.push({id:Date.now(), date:d, type:t, desc:ds, amt:a});
+        addAudit('Cash',`${t} ${ds} ${a}`);
+        save();
+        document.getElementById('cDesc').value=''; document.getElementById('cAmt').value='';
     }
 
-    // METER
-    async function addMeter() {
-        let d = document.getElementById('meterDate').value, v = parseFloat(document.getElementById('meterRead').value);
-        if (!d || isNaN(v)) return;
-        if (db.meterReadings.find(r => r.date === d)) { alert('Reading for this date already exists'); return; }
-        db.meterReadings.push({ id: Date.now(), date: d, reading: v });
-        db.meterReadings.sort((a, b) => a.date.localeCompare(b.date));
-        addAudit('Meter', `Added reading ${v} on ${d}`);
-        await save();
-        document.getElementById('meterRead').value = '';
+    // ========== METER ==========
+    function addMeter() {
+        let d=document.getElementById('meterDate').value, v=parseFloat(document.getElementById('meterRead').value);
+        if(!d||isNaN(v)) return;
+        if(db.meterReadings.find(r=>r.date===d)) { alert('Reading for this date already exists'); return; }
+        db.meterReadings.push({id:Date.now(), date:d, reading:v});
+        db.meterReadings.sort((a,b)=>a.date.localeCompare(b.date));
+        addAudit('Meter',`Added reading ${v} on ${d}`);
+        save();
+        document.getElementById('meterRead').value='';
     }
-    async function deleteMeter(id) {
-        if (confirm('Delete this reading?')) {
-            db.meterReadings = db.meterReadings.filter(r => r.id !== id);
-            addAudit('Meter', 'Deleted');
-            await save();
-        }
-    }
-    async function editMeter(id) {
-        let r = db.meterReadings.find(x => x.id === id);
-        if (!r) return;
+    function deleteMeter(id) { if(confirm('Delete this reading?')) { db.meterReadings=db.meterReadings.filter(r=>r.id!==id); addAudit('Meter','Deleted'); save(); } }
+    function editMeter(id) {
+        let r = db.meterReadings.find(x=>x.id===id);
+        if(!r) return;
         let newDate = prompt('New date (YYYY-MM-DD):', r.date);
-        if (!newDate) return;
+        if(!newDate) return;
         let newReading = parseFloat(prompt('New reading:', r.reading));
-        if (isNaN(newReading)) return;
-        if (db.meterReadings.find(x => x.id !== id && x.date === newDate)) { alert('Another reading already exists on this date!'); return; }
+        if(isNaN(newReading)) return;
+        if(db.meterReadings.find(x=>x.id!==id && x.date===newDate)) { alert('Another reading already exists on this date!'); return; }
         r.date = newDate; r.reading = newReading;
-        db.meterReadings.sort((a, b) => a.date.localeCompare(b.date));
-        addAudit('Meter', 'Edited reading');
-        await save();
+        db.meterReadings.sort((a,b)=>a.date.localeCompare(b.date));
+        addAudit('Meter','Edited reading');
+        save();
     }
     function calcMeterAvg() {
         let readings = db.meterReadings; let val = 0;
-        if (readings.length >= 2) {
-            let days = (new Date(readings[readings.length - 1].date) - new Date(readings[0].date)) / (1000 * 60 * 60 * 24);
-            let cons = readings[readings.length - 1].reading - readings[0].reading;
-            if (days > 0) val = cons / days;
+        if(readings.length>=2) {
+            let days = (new Date(readings[readings.length-1].date)-new Date(readings[0].date))/(1000*60*60*24);
+            let cons = readings[readings.length-1].reading - readings[0].reading;
+            if(days>0) val = cons/days;
         }
         document.getElementById('avgDailyText').innerText = val.toFixed(2);
     }
 
-    // HOME & DASHBOARD
+    // ========== HOME & DASHBOARD ==========
     function updateHome() {
         document.getElementById('hs-items').innerText = db.items.length;
-        let stockVal = Object.values(db.stock).reduce((a, s) => a + s.qty * s.price, 0);
-        document.getElementById('hs-stockval').innerText = 'RS ' + stockVal.toLocaleString();
-        let netCash = db.cash.reduce((a, t) => a + (t.type === 'In' ? t.amt : -t.amt), 0);
-        document.getElementById('hs-cash').innerText = 'RS ' + netCash.toLocaleString();
-        let lowCount = Object.keys(db.stock).filter(n => {
-            let min = (db.items.find(i => i.name === n) || {}).minLevel || 5;
-            return db.stock[n].qty <= min;
-        }).length;
+        let stockVal = Object.values(db.stock).reduce((a,s)=>a+s.qty*s.price,0);
+        document.getElementById('hs-stockval').innerText = 'RS '+stockVal.toLocaleString();
+        let netCash = db.cash.reduce((a,t)=>a+(t.type==='In'?t.amt:-t.amt),0);
+        document.getElementById('hs-cash').innerText = 'RS '+netCash.toLocaleString();
+        let lowCount = Object.keys(db.stock).filter(n=>{ let min=(db.items.find(i=>i.name===n)||{}).minLevel||5; return db.stock[n].qty <= min; }).length;
         document.getElementById('hs-low').innerText = lowCount;
-        document.getElementById('home-date').innerText = 'Today: ' + new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        document.getElementById('home-date').innerText = 'Today: ' + new Date().toLocaleDateString('en-PK',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     }
     function updateDash() {
-        let inc = 0, exp = 0, stockVal = 0;
-        db.cash.forEach(t => { if (t.type === 'In') inc += t.amt; else exp += t.amt; });
-        Object.values(db.stock).forEach(s => stockVal += s.qty * s.price);
+        let inc=0, exp=0, stockVal=0;
+        db.cash.forEach(t=>{ if(t.type==='In') inc+=t.amt; else exp+=t.amt; });
+        Object.values(db.stock).forEach(s=> stockVal+=s.qty*s.price);
         let net = inc - exp + stockVal;
-        document.getElementById('d-in').innerText = 'RS ' + inc.toLocaleString();
-        document.getElementById('d-out').innerText = 'RS ' + exp.toLocaleString();
-        document.getElementById('d-stock').innerText = 'RS ' + stockVal.toLocaleString();
-        document.getElementById('d-profit').innerText = 'RS ' + net.toLocaleString();
+        document.getElementById('d-in').innerText = 'RS '+inc.toLocaleString();
+        document.getElementById('d-out').innerText = 'RS '+exp.toLocaleString();
+        document.getElementById('d-stock').innerText = 'RS '+stockVal.toLocaleString();
+        document.getElementById('d-profit').innerText = 'RS '+net.toLocaleString();
 
+        // Total Cash (net cash)
         let cashNet = inc - exp;
-        document.getElementById('d-cash').innerText = 'RS ' + cashNet.toLocaleString();
+        document.getElementById('d-cash').innerText = 'RS '+cashNet.toLocaleString();
 
+        // Allocated Funds (remaining in envelopes)
         let totalAllocRemaining = 0;
-        ['milk', 'elec', 'misc'].forEach(k => {
+        ['milk','elec','misc'].forEach(k => {
             let entries = db.env[k] || [];
             let alloc = 0, spent = 0;
-            entries.forEach(e => { if (e.type === 'Allocation') alloc += e.amount; else spent += e.amount; });
+            entries.forEach(e => { if(e.type==='Allocation') alloc+=e.amount; else spent+=e.amount; });
             totalAllocRemaining += (alloc - spent);
         });
-        document.getElementById('d-alloc').innerText = 'RS ' + totalAllocRemaining.toLocaleString();
+        document.getElementById('d-alloc').innerText = 'RS '+totalAllocRemaining.toLocaleString();
 
-        let invExp = db.stock_logs.filter(l => l.type === 'OUT').reduce((sum, l) => sum + (l.qty * l.price), 0);
-        document.getElementById('d-invexp').innerText = 'RS ' + invExp.toLocaleString();
+        // Inventory Expense (total value of consumed stock)
+        let invExp = db.stock_logs.filter(l=>l.type==='OUT').reduce((sum,l)=> sum + (l.qty * l.price), 0);
+        document.getElementById('d-invexp').innerText = 'RS '+invExp.toLocaleString();
 
+        // ★ Available Cash = Total Cash - Allocated Funds
         let availableCash = cashNet - totalAllocRemaining;
-        document.getElementById('d-availcash').innerText = 'RS ' + availableCash.toLocaleString();
+        document.getElementById('d-availcash').innerText = 'RS '+availableCash.toLocaleString();
 
-        if (donutChart) donutChart.destroy();
+        if(donutChart) donutChart.destroy();
         let ctx = document.getElementById('donutChart').getContext('2d');
         donutChart = new Chart(ctx, {
             type: 'doughnut',
-            data: {
-                labels: ['Income', 'Expense', 'Stock Value'],
-                datasets: [{ data: [inc, exp, stockVal], backgroundColor: ['#f0b90b', '#ff3860', '#5a5a8a'], borderColor: '#14141e', borderWidth: 3, hoverBorderColor: '#f0b90b' }]
-            },
-            options: { cutout: '72%', plugins: { legend: { display: false } }, animation: { animateRotate: true, duration: 800 } }
+            data: { labels:['Income','Expense','Stock Value'], datasets:[{ data:[inc, exp, stockVal], backgroundColor:['#f0b90b','#ff3860','#5a5a8a'], borderColor:'#14141e', borderWidth:3, hoverBorderColor:'#f0b90b' }] },
+            options: { cutout:'72%', plugins:{ legend:{ display:false } }, animation:{ animateRotate:true, duration:800 } }
         });
-        document.getElementById('chartTotalInv').innerText = 'RS ' + stockVal.toLocaleString();
-
+        document.getElementById('chartTotalInv').innerText = 'RS '+stockVal.toLocaleString();
         let list = '';
-        Object.keys(db.stock).forEach(n => {
-            let min = (db.items.find(i => i.name === n) || {}).minLevel || 5;
+        Object.keys(db.stock).forEach(n=>{
+            let min = (db.items.find(i=>i.name===n)||{}).minLevel||5;
             let q = db.stock[n].qty;
-            if (q <= min) list += `<div class="stock-row"><span>${n} (${getItemCode(n)})</span><span style="font-weight:700; font-size:0.8rem;">${q}/${min}</span><div class="progress-bg"><div class="progress-fill" style="width:${Math.min((q / min) * 100, 100)}%"></div></div></div>`;
+            if(q<=min) list += `<div class="stock-row"><span>${n} (${getItemCode(n)})</span><span style="font-weight:700; font-size:0.8rem;">${q}/${min}</span><div class="progress-bg"><div class="progress-fill" style="width:${Math.min((q/min)*100,100)}%"></div></div></div>`;
         });
         document.getElementById('lowStockContainer').innerHTML = list || '<p style="color:var(--success);">✅ All stocks sufficient.</p>';
         updateHome();
     }
 
     function renderAll() {
-        document.getElementById('m-list').innerHTML = db.items.map(i => `<tr><td>${i.id}</td><td>${i.name}</td><td>${i.minLevel ?? 5}</td><td class="action-icons"><span class="edit-icon" onclick="editMaster('${i.id}')">✏️</span><span class="del-icon" onclick="delItem('${i.id}')">🗑️</span></td></tr>`).join('');
-        document.getElementById('s-display').innerHTML = Object.keys(db.stock).map(n => {
-            let min = (db.items.find(i => i.name === n) || {}).minLevel || 5; let q = db.stock[n].qty;
-            return `<tr class="${q <= min ? 'low-stock-row' : ''}"><td>${getItemCode(n)}</td><td>${n}</td><td>${q}</td><td>${min}</td><td>${db.stock[n].price.toFixed(2)}</td><td>RS ${(q * db.stock[n].price).toFixed(0)}</td><td class="action-icons"><span class="edit-icon" onclick="editStock('${n}')">✏️</span><span class="del-icon" onclick="del('stock','${n}')">🗑️</span></td></tr>`;
-        }).join('');
-        document.getElementById('s-out-list').innerHTML = db.stock_logs.filter(l => l.type === 'OUT').slice(-15).reverse().map(l => `<tr><td>${l.date}</td><td>${getItemCode(l.name)}</td><td>${l.name}</td><td>${l.qty}</td><td>RS ${(l.qty * l.price).toFixed(0)}</td><td class="action-icons"><span class="edit-icon" onclick="editStockLog(${l.id})">✏️</span><span class="del-icon" onclick="delStockLog(${l.id})">🗑️</span></td></tr>`).join('');
-        document.getElementById('c-list').innerHTML = db.cash.slice(-10).reverse().map(t => `<tr><td>${t.date}</td><td>${t.type}</td><td>${t.desc}</td><td>RS ${t.amt}</td><td class="action-icons"><span class="edit-icon" onclick="editCash(${t.id})">✏️</span><span class="del-icon" onclick="delCash(${t.id})">🗑️</span></td></tr>`).join('');
-        document.getElementById('meter-list').innerHTML = db.meterReadings.map(r => `<tr><td>${r.date}</td><td>${r.reading}</td><td class="action-icons"><span class="edit-icon" onclick="editMeter(${r.id})">✏️</span><span class="del-icon" onclick="deleteMeter(${r.id})">🗑️</span></td></tr>`).join('');
-        let totalCons = 0; if (db.meterReadings.length > 1) totalCons = db.meterReadings[db.meterReadings.length - 1].reading - db.meterReadings[0].reading;
+        document.getElementById('m-list').innerHTML = db.items.map(i=>`<tr><td>${i.id}</td><td>${i.name}</td><td>${i.minLevel??5}</td><td class="action-icons"><span class="edit-icon" onclick="editMaster('${i.id}')">✏️</span><span class="del-icon" onclick="delItem('${i.id}')">🗑️</span></td></tr>`).join('');
+        document.getElementById('s-display').innerHTML = Object.keys(db.stock).map(n=>{ let min=(db.items.find(i=>i.name===n)||{}).minLevel||5; let q=db.stock[n].qty; return `<tr class="${q<=min?'low-stock-row':''}"><td>${getItemCode(n)}</td><td>${n}</td><td>${q}</td><td>${min}</td><td>${db.stock[n].price.toFixed(2)}</td><td>RS ${(q*db.stock[n].price).toFixed(0)}</td><td class="action-icons"><span class="edit-icon" onclick="editStock('${n}')">✏️</span><span class="del-icon" onclick="del('stock','${n}')">🗑️</span></td></tr>`; }).join('');
+        document.getElementById('s-out-list').innerHTML = db.stock_logs.filter(l=>l.type==='OUT').slice(-15).reverse().map(l=>`<tr><td>${l.date}</td><td>${getItemCode(l.name)}</td><td>${l.name}</td><td>${l.qty}</td><td>RS ${(l.qty*l.price).toFixed(0)}</td><td class="action-icons"><span class="edit-icon" onclick="editStockLog(${l.id})">✏️</span><span class="del-icon" onclick="delStockLog(${l.id})">🗑️</span></td></tr>`).join('');
+        document.getElementById('c-list').innerHTML = db.cash.slice(-10).reverse().map(t=>`<tr><td>${t.date}</td><td>${t.type}</td><td>${t.desc}</td><td>RS ${t.amt}</td><td class="action-icons"><span class="edit-icon" onclick="editCash(${t.id})">✏️</span><span class="del-icon" onclick="delCash(${t.id})">🗑️</span></td></tr>`).join('');
+        document.getElementById('meter-list').innerHTML = db.meterReadings.map(r=>`<tr><td>${r.date}</td><td>${r.reading}</td><td class="action-icons"><span class="edit-icon" onclick="editMeter(${r.id})">✏️</span><span class="del-icon" onclick="deleteMeter(${r.id})">🗑️</span></td></tr>`).join('');
+        let totalCons = 0; if(db.meterReadings.length>1) totalCons = db.meterReadings[db.meterReadings.length-1].reading - db.meterReadings[0].reading;
         document.getElementById('totalConsumed').innerText = totalCons.toFixed(2);
-        document.getElementById('audit-list').innerHTML = db.audit.slice(0, 30).map(a => `<tr><td>${new Date(a.time).toLocaleString()}</td><td>${a.module}</td><td style="font-size:0.75rem;">${a.details}</td></tr>`).join('');
+        document.getElementById('audit-list').innerHTML = db.audit.slice(0,30).map(a=>`<tr><td>${new Date(a.time).toLocaleString()}</td><td>${a.module}</td><td style="font-size:0.75rem;">${a.details}</td></tr>`).join('');
         updateTicker(); updateDatalists(); calcMeterAvg();
     }
     function updateTicker() {
         let msgs = [];
-        Object.keys(db.stock).forEach(n => {
-            let min = (db.items.find(i => i.name === n) || {}).minLevel || 5;
-            if (db.stock[n].qty <= min) msgs.push(`⚠️ ${n} (${getItemCode(n)}): ${db.stock[n].qty}/${min}`);
-        });
-        document.getElementById('tickerText').innerHTML = msgs.length ? msgs.join(' &nbsp;|&nbsp; ') : '✅ All stocks above minimum level.';
+        Object.keys(db.stock).forEach(n=>{ let min=(db.items.find(i=>i.name===n)||{}).minLevel||5; if(db.stock[n].qty<=min) msgs.push(`⚠️ ${n} (${getItemCode(n)}): ${db.stock[n].qty}/${min}`); });
+        document.getElementById('tickerText').innerHTML = msgs.length?msgs.join(' &nbsp;|&nbsp; '):'✅ All stocks above minimum level.';
     }
 
-    // DELETE / EDIT (all async save)
-    async function delItem(id) { if (confirm('Delete item?')) { db.items = db.items.filter(i => i.id !== id); await save(); } }
-    async function delCash(id) { if (confirm('Delete cash entry?')) { db.cash = db.cash.filter(c => c.id !== id); await save(); } }
-    async function editCash(id) {
-        let c = db.cash.find(x => x.id === id); if (!c) return;
-        let newDate = prompt('New date (YYYY-MM-DD):', c.date); if (!newDate) return;
-        let newType = prompt('New type (In/Out):', c.type); if (!newType || (newType !== 'In' && newType !== 'Out')) return;
-        let newDesc = prompt('New description:', c.desc); if (!newDesc) return;
-        let newAmt = parseFloat(prompt('New amount:', c.amt)); if (isNaN(newAmt)) return;
-        c.date = newDate; c.type = newType; c.desc = newDesc; c.amt = newAmt;
-        addAudit('Cash', 'Edited entry'); await save();
+    // ========== DELETE / EDIT ==========
+    function delItem(id) { if(confirm('Delete item?')) { db.items=db.items.filter(i=>i.id!==id); save(); } }
+    function delCash(id) { if(confirm('Delete cash entry?')) { db.cash=db.cash.filter(c=>c.id!==id); save(); } }
+    function editCash(id) {
+        let c = db.cash.find(x=>x.id===id); if(!c) return;
+        let newDate = prompt('New date (YYYY-MM-DD):', c.date); if(!newDate) return;
+        let newType = prompt('New type (In/Out):', c.type); if(!newType || (newType!=='In'&&newType!=='Out')) return;
+        let newDesc = prompt('New description:', c.desc); if(!newDesc) return;
+        let newAmt = parseFloat(prompt('New amount:', c.amt)); if(isNaN(newAmt)) return;
+        c.date=newDate; c.type=newType; c.desc=newDesc; c.amt=newAmt;
+        addAudit('Cash','Edited entry'); save();
     }
-    async function del(module, key) {
-        if (module === 'stock') { if (confirm('Delete stock item?')) { delete db.stock[key]; await save(); } }
-        else { db[module] = db[module].filter(x => String(x.id) !== String(key) && x.name !== key); await save(); }
+    function del(module, key) {
+        if(module === 'stock') { if(confirm('Delete stock item?')) { delete db.stock[key]; save(); } }
+        else { db[module] = db[module].filter(x=> String(x.id) !== String(key) && x.name !== key); save(); }
     }
-    async function editStock(name) {
-        if (!db.stock[name]) return;
+    function editStock(name) {
+        if(!db.stock[name]) return;
         let st = db.stock[name];
         let newQty = parseFloat(prompt(`Edit quantity for ${name} (current: ${st.qty}):`, st.qty));
-        if (isNaN(newQty) || newQty < 0) return;
+        if(isNaN(newQty) || newQty < 0) return;
         let changeRate = confirm(`Current average rate: ${st.price.toFixed(2)}. Change it?`);
         let newRate = st.price;
-        if (changeRate) {
+        if(changeRate) {
             let rateInput = parseFloat(prompt(`Enter new average rate:`, st.price.toFixed(2)));
-            if (!isNaN(rateInput) && rateInput >= 0) newRate = rateInput;
+            if(!isNaN(rateInput) && rateInput >= 0) newRate = rateInput;
         }
         db.stock[name].qty = newQty;
         db.stock[name].price = newRate;
         addAudit('Stock', `Manually edited ${name}: qty=${newQty}, rate=${newRate.toFixed(2)}`);
-        await save();
+        save();
     }
-    async function delStockLog(id) {
+    function delStockLog(id) {
         let l = db.stock_logs.find(l => l.id === id);
         if (!l) return;
         if (!confirm('Delete this log?')) return;
@@ -543,9 +857,9 @@
         }
         db.stock_logs = db.stock_logs.filter(x => x.id !== id);
         addAudit('StockLog', 'Deleted');
-        await save();
+        save();
     }
-    async function editStockLog(id) {
+    function editStockLog(id) {
         let l = db.stock_logs.find(x => x.id === id);
         if (!l) return;
         let newDate = prompt('New date (YYYY-MM-DD)', l.date);
@@ -588,32 +902,40 @@
         l.qty = newQty;
         l.price = newRate;
         addAudit('StockLog', 'Edited');
-        await save();
+        save();
     }
 
-    // REPORTS (unchanged except no save needed)
+    // ========== REPORTS ==========
     function genRep(type, format) {
-        let from = document.getElementById('repFrom').value, to = document.getElementById('repTo').value;
-        if (!from || !to) { alert('Select dates'); return; }
-        let head = [], body = [], title = '';
-        if (type === 'stock_status') {
-            title = 'Inventory'; head = ['ID', 'Item', 'Qty', 'Min', 'Rate', 'Value'];
-            body = Object.keys(db.stock).map(n => {
-                let s = db.stock[n];
-                let min = (db.items.find(i => i.name === n) || {}).minLevel || 5;
-                let val = (s.qty * s.price).toFixed(0);
+        let from=document.getElementById('repFrom').value, to=document.getElementById('repTo').value;
+        if(!from||!to) { alert('Select dates'); return; }
+        let head=[], body=[], title='';
+        if(type==='stock_status') {
+            title='Inventory'; head=['ID','Item','Qty','Min','Rate','Value'];
+            body=Object.keys(db.stock).map(n=>{
+                let s=db.stock[n];
+                let min=(db.items.find(i=>i.name===n)||{}).minLevel||5;
+                let val = (s.qty*s.price).toFixed(0);
                 return [getItemCode(n), n, s.qty, min, s.price.toFixed(2), val];
             });
-            let totalVal = Object.keys(db.stock).reduce((sum, n) => sum + (db.stock[n].qty * db.stock[n].price), 0);
-            body.push(['TOTAL', '', '', '', '', totalVal.toFixed(0)]);
-        } else if (type === 'pl') {
-            let inc = 0, exp = 0; db.cash.forEach(t => { if (t.type === 'In') inc += t.amt; else exp += t.amt; });
-            let sval = Object.values(db.stock).reduce((a, s) => a + s.qty * s.price, 0);
-            title = 'P&L'; head = ['Description', 'Amount'];
-            body = [['Income', inc], ['Expense', exp], ['Net Cash', inc - exp], ['Stock Value', sval], ['Overall', inc - exp + sval]];
-        } else if (type === 'cashbook') {
-            title = 'Cashbook'; head = ['Date', 'Description', 'IN', 'OUT', 'Balance'];
-            let openingBalance = db.cash.filter(c => c.date < from).reduce((sum, c) => sum + (c.type === 'In' ? c.amt : -c.amt), 0);
+            let totalVal = Object.keys(db.stock).reduce((sum,n)=>{
+                let s=db.stock[n];
+                return sum + (s.qty*s.price);
+            }, 0);
+            body.push(['TOTAL','','','','',totalVal.toFixed(0)]);
+        }
+        else if(type==='pl') {
+            let inc=0,exp=0; db.cash.forEach(t=>{ if(t.type==='In') inc+=t.amt; else exp+=t.amt; });
+            let sval=Object.values(db.stock).reduce((a,s)=>a+s.qty*s.price,0);
+            title='P&L'; head=['Description','Amount'];
+            body=[['Income',inc],['Expense',exp],['Net Cash',inc-exp],['Stock Value',sval],['Overall',inc-exp+sval]];
+        }
+        else if(type==='cashbook') {
+            title = 'Cashbook';
+            head = ['Date', 'Description', 'IN', 'OUT', 'Balance'];
+            let openingBalance = db.cash
+                .filter(c => c.date < from)
+                .reduce((sum, c) => sum + (c.type === 'In' ? c.amt : -c.amt), 0);
             let entries = db.cash.filter(c => c.date >= from && c.date <= to);
             entries.sort((a, b) => a.date.localeCompare(b.date) || (a.id - b.id));
             let totalIn = 0, totalOut = 0;
@@ -630,140 +952,120 @@
                 return [c.date, c.desc, inAmt, outAmt, running.toLocaleString()];
             }));
             body.push(['TOTAL', '', totalIn, totalOut, '']);
-        } else if (type === 'stock_history') {
-            title = 'Stock Movement'; head = ['Date', 'ID', 'Item', 'Action', 'Qty', 'Rate'];
-            body = db.stock_logs.filter(x => x.date >= from && x.date <= to)
-                .map(x => [x.date, getItemCode(x.name), x.name, x.type, x.qty, x.price.toFixed(2)]);
-        } else if (type === 'lowstock') {
-            title = 'Low Stock'; head = ['ID', 'Item', 'Qty', 'Min'];
-            Object.keys(db.stock).forEach(n => {
-                let min = (db.items.find(i => i.name === n) || {}).minLevel || 5;
-                if (db.stock[n].qty <= min) body.push([getItemCode(n), n, db.stock[n].qty, min]);
-            });
-        } else if (type === 'audit') {
-            title = 'Audit Trail'; head = ['Time', 'Module', 'Details'];
-            body = db.audit.filter(a => a.time.slice(0, 10) >= from && a.time.slice(0, 10) <= to)
-                .map(a => [new Date(a.time).toLocaleString(), a.module, a.details]);
         }
-        if (body.length === 0) { alert('No data'); return; }
-        if (format === 'pdf') {
+        else if(type==='stock_history') {
+            title='Stock Movement'; head=['Date','ID','Item','Action','Qty','Rate'];
+            body=db.stock_logs.filter(x=>x.date>=from&&x.date<=to)
+                .map(x=>[x.date,getItemCode(x.name),x.name,x.type,x.qty,x.price.toFixed(2)]);
+        }
+        else if(type==='lowstock') {
+            title='Low Stock'; head=['ID','Item','Qty','Min'];
+            Object.keys(db.stock).forEach(n=>{
+                let min=(db.items.find(i=>i.name===n)||{}).minLevel||5;
+                if(db.stock[n].qty<=min) body.push([getItemCode(n),n,db.stock[n].qty,min]);
+            });
+        }
+        else if(type==='audit') {
+            title='Audit Trail'; head=['Time','Module','Details'];
+            body=db.audit.filter(a=>a.time.slice(0,10)>=from&&a.time.slice(0,10)<=to)
+                .map(a=>[new Date(a.time).toLocaleString(),a.module,a.details]);
+        }
+        if(body.length===0) { alert('No data'); return; }
+        if(format==='pdf') {
             const { jsPDF } = window.jspdf; const doc = new jsPDF();
-            doc.text(`IRFAN FOODS - ${title}`, 14, 15);
-            doc.autoTable({ head: [head], body: body, startY: 22, theme: 'grid', headStyles: { fillColor: [240, 185, 11] } });
+            doc.text(`IRFAN FOODS - ${title}`,14,15);
+            doc.autoTable({ head:[head], body:body, startY:22, theme:'grid', headStyles:{fillColor:[240,185,11]} });
             doc.save(`${title}.pdf`);
         } else {
             let ws = XLSX.utils.aoa_to_sheet([ [`IRFAN FOODS - ${title}`], head, ...body ]);
-            let wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Report');
-            XLSX.writeFile(wb, `${title}.xlsx`);
+            let wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Report');
+            XLSX.writeFile(wb,`${title}.xlsx`);
         }
     }
 
-    // UTILS (unchanged except async where needed)
-    function exportBackup() { let blob = new Blob([JSON.stringify(db)], { type: 'application/json' }); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'IrfanBackup.json'; a.click(); addAudit('Admin', 'Backup exported'); }
-    async function importBackup(input) {
-        let reader = new FileReader();
-        reader.onload = async function () {
-            try {
-                let imported = JSON.parse(reader.result);
-                if (imported.items) {
-                    db = imported;
-                    if (!db.audit) db.audit = []; if (!db.meterReadings) db.meterReadings = []; if (!db.env) db.env = { milk: [], elec: [], misc: [] };
-                    db.items.forEach(i => { if (i.minLevel === undefined) i.minLevel = 5; });
-                    await save();
-                    alert('Imported!');
-                    location.reload();
-                } else {
-                    alert('Invalid file');
-                }
-            } catch (e) { alert('Invalid file'); }
-        };
-        if (input.files[0]) reader.readAsText(input.files[0]);
-    }
-    function toggleTheme() { document.body.classList.toggle('light-mode'); localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark'); if (document.getElementById('dash').classList.contains('active')) updateDash(); }
+    // ========== UTILS ==========
+    function exportBackup() { let blob=new Blob([JSON.stringify(db)],{type:'application/json'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='IrfanBackup.json'; a.click(); addAudit('Admin','Backup exported'); }
+    function importBackup(input) { let reader=new FileReader(); reader.onload=function(){ try{ db=JSON.parse(reader.result); if(!db.audit) db.audit=[]; if(!db.meterReadings) db.meterReadings=[]; if(!db.env) db.env = { milk:[], elec:[], misc:[] }; db.items.forEach(i=>{ if(i.minLevel===undefined) i.minLevel=5; }); save(); alert('Imported!'); location.reload(); }catch(e){ alert('Invalid file'); } }; if(input.files[0]) reader.readAsText(input.files[0]); }
+    function toggleTheme() { document.body.classList.toggle('light-mode'); localStorage.setItem('theme', document.body.classList.contains('light-mode')?'light':'dark'); if(document.getElementById('dash').classList.contains('active')) updateDash(); }
     function logout() { sessionStorage.clear(); location.reload(); }
-    async function changePass() { let p = document.getElementById('newPass').value; if (p) { db.pass = p; await save(); alert('Password updated'); } else alert('Enter new password'); }
-    async function changeAdminCode() { let c = document.getElementById('newAdminCode').value; if (c) { db.adminCode = c; await save(); alert('Admin code updated'); } else alert('Enter new code'); }
-    async function clearAudit() { if (confirm('Clear audit log?')) { db.audit = []; await save(); } }
+    function changePass() { let p=document.getElementById('newPass').value; if(p) { db.pass=p; save(); alert('Password updated'); } else alert('Enter new password'); }
+    function changeAdminCode() { let c=document.getElementById('newAdminCode').value; if(c) { db.adminCode=c; save(); alert('Admin code updated'); } else alert('Enter new code'); }
+    function clearAudit() { if(confirm('Clear audit log?')) { db.audit=[]; save(); } }
 
-    // ALLOCATION TRACKER (async)
+    // ========== ALLOCATION TRACKER ==========
     function getEnvKey(cat) {
-        if (cat === 'Milk Powder') return 'milk';
-        if (cat === 'Electricity') return 'elec';
+        if(cat==='Milk Powder') return 'milk';
+        if(cat==='Electricity') return 'elec';
         return 'misc';
     }
-    async function addAllocation() {
+    function addAllocation() {
         let cat = document.getElementById('allocCat').value;
         let date = document.getElementById('allocDate').value;
         let amt = parseFloat(document.getElementById('allocAmt').value);
-        if (!date || isNaN(amt) || amt <= 0) { alert('Fill correctly'); return; }
+        if(!date || isNaN(amt) || amt<=0) { alert('Fill correctly'); return; }
         let key = getEnvKey(cat);
-        db.env[key].push({ id: Date.now(), date, type: 'Allocation', amount: amt, desc: '' });
+        db.env[key].push({id:Date.now(), date, type:'Allocation', amount:amt, desc:''});
         addAudit('Allocation', `Added ${cat} allocation ${amt}`);
-        await save();
+        save();
         document.getElementById('allocAmt').value = 1000;
     }
-    async function addAllocationExpense() {
+    function addAllocationExpense() {
         let cat = document.getElementById('expCat').value;
         let date = document.getElementById('expDate').value;
         let desc = document.getElementById('expDesc').value.trim();
         let amt = parseFloat(document.getElementById('expAmt').value);
-        if (!date || isNaN(amt) || amt <= 0 || !desc) { alert('Fill correctly'); return; }
+        if(!date || isNaN(amt) || amt<=0 || !desc) { alert('Fill correctly'); return; }
         let key = getEnvKey(cat);
-        db.env[key].push({ id: Date.now(), date, type: 'Expense', amount: amt, desc });
+        db.env[key].push({id:Date.now(), date, type:'Expense', amount:amt, desc});
         addAudit('Allocation', `Recorded expense ${cat} - ${desc} ${amt}`);
-        await save();
+        save();
         document.getElementById('expDesc').value = '';
         document.getElementById('expAmt').value = '';
     }
     function renderAllocations() {
-        let money = n => 'RS ' + n.toLocaleString();
+        let money = n => 'RS '+n.toLocaleString();
         let cards = '';
         let categories = [
-            { name: 'Milk Powder', key: 'milk' },
-            { name: 'Electricity', key: 'elec' },
-            { name: 'Miscellaneous', key: 'misc' }
+            {name:'Milk Powder', key:'milk'},
+            {name:'Electricity', key:'elec'},
+            {name:'Miscellaneous', key:'misc'}
         ];
-        categories.forEach(c => {
+        categories.forEach(c=>{
             let entries = db.env[c.key] || [];
             let allocated = 0, spent = 0;
-            entries.forEach(e => { if (e.type === 'Allocation') allocated += e.amount; else spent += e.amount; });
+            entries.forEach(e=>{ if(e.type==='Allocation') allocated+=e.amount; else spent+=e.amount; });
             let remaining = allocated - spent;
-            cards += `<div class="dash-card"><h3>${c.name}</h3><div style="display:flex; justify-content:space-between; font-size:0.9rem; margin:0.4rem 0;"><span>Allocated:</span><span>${money(allocated)}</span></div><div style="display:flex; justify-content:space-between; font-size:0.9rem; margin:0.4rem 0;"><span>Spent:</span><span style="color:#ff3860;">${money(spent)}</span></div><div style="display:flex; justify-content:space-between; font-size:0.9rem; font-weight:700; color:var(--primary);"><span>Remaining:</span><span>${money(remaining)}</span></div></div>`;
+            cards += `<div class="dash-card">
+                <h3>${c.name}</h3>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin:0.4rem 0;">
+                    <span>Allocated:</span><span>${money(allocated)}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem; margin:0.4rem 0;">
+                    <span>Spent:</span><span style="color:#ff3860;">${money(spent)}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:0.9rem; font-weight:700; color:var(--primary);">
+                    <span>Remaining:</span><span>${money(remaining)}</span>
+                </div>
+            </div>`;
         });
         document.getElementById('allocCards').innerHTML = cards;
         let all = [];
-        categories.forEach(c => {
-            (db.env[c.key] || []).forEach(e => { all.push({ ...e, category: c.name }); });
+        categories.forEach(c=>{
+            (db.env[c.key]||[]).forEach(e=>{ all.push({...e, category: c.name}); });
         });
-        all.sort((a, b) => b.id - a.id);
-        let logHtml = all.map(e => `<tr><td>${e.date}</td><td>${e.category}</td><td>${e.type}</td><td>${e.amount}</td><td>${e.desc || '-'}</td><td class="action-icons"><span class="del-icon" onclick="delEnvTx(${e.id})">🗑️</span></td></tr>`).join('');
+        all.sort((a,b)=>b.id-a.id);
+        let logHtml = all.map(e=>`<tr>
+            <td>${e.date}</td><td>${e.category}</td><td>${e.type}</td><td>${e.amount}</td><td>${e.desc||'-'}</td>
+            <td class="action-icons"><span class="del-icon" onclick="delEnvTx(${e.id})">🗑️</span></td>
+        </tr>`).join('');
         document.getElementById('allocLog').innerHTML = logHtml || '<tr><td colspan="6">No transactions</td></tr>';
     }
-    async function delEnvTx(id) {
-        if (!confirm('Delete transaction?')) return;
-        ['milk', 'elec', 'misc'].forEach(key => { db.env[key] = db.env[key].filter(e => e.id != id); });
-        addAudit('Allocation', 'Deleted transaction');
-        await save();
+    function delEnvTx(id) {
+        if(!confirm('Delete transaction?')) return;
+        ['milk','elec','misc'].forEach(key=>{ db.env[key] = db.env[key].filter(e=> e.id != id); });
+        addAudit('Allocation','Deleted transaction');
+        save();
     }
-
-    // Master edit (if exists)
-    async function editMaster(id) {
-        let item = db.items.find(i => i.id === id);
-        if (!item) return;
-        let newName = prompt('New name:', item.name);
-        if (newName) {
-            item.name = newName;
-            addAudit('Master', `Edited item ${id} name`);
-        }
-        let newMin = parseInt(prompt('New min level:', item.minLevel));
-        if (!isNaN(newMin) && newMin >= 0) {
-            item.minLevel = newMin;
-        }
-        await save();
-    }
-
-    // Make sure global variables/functions are accessible
-    window.donutChart = null;
 </script>
 </body>
 </html>
