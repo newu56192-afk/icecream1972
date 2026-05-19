@@ -8,6 +8,7 @@
     <!-- Firebase Compat SDKs (global scripts) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-analytics-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -533,38 +534,111 @@
 </div>
 
 <script>
-    // ========== DATABASE ==========
-    let db = (() => {
-        try {
-            let raw = localStorage.getItem('irfan_final_v4');
-            if (raw) {
-                let d = JSON.parse(raw);
-                if (!d.audit) d.audit = [];
-                if (!d.meterReadings) d.meterReadings = [];
-                if (!d.env) d.env = { milk:[], elec:[], misc:[] };
-                d.items.forEach(i=>{ if(i.minLevel===undefined) i.minLevel=5; });
-                return d;
-            }
-        } catch(e){}
-        return { items:[], stock:{}, cash:[], stock_logs:[], meterReadings:[], audit:[], pass:'12', adminCode:'11', env:{ milk:[], elec:[], misc:[] } };
-    })();
-    if(!db.audit) db.audit=[];
-    if(!db.meterReadings) db.meterReadings=[];
-    if(!db.env) db.env = { milk:[], elec:[], misc:[] };
-    db.items.forEach(i=>{ if(i.minLevel===undefined) i.minLevel=5; });
-    let donutChart;
+    // ========== FIREBASE FIRESTORE INITIALIZATION ==========
+    const firebaseConfig = {
+        apiKey: "AIzaSyApS8WHJLTui4r0xMCX_5rXEu8B4-7a7MI",
+        authDomain: "irfan-c1be0.firebaseapp.com",
+        projectId: "irfan-c1be0",
+        storageBucket: "irfan-c1be0.firebasestorage.app",
+        messagingSenderId: "561044513175",
+        appId: "1:561044513175:web:5c8b977fa334c3ecc1a4d2",
+        measurementId: "G-NK718RB038"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const firestore = firebase.firestore();
+    const DB_DOC_ID = 'appData'; // single document storing entire state
 
-    function save() {
-        localStorage.setItem('irfan_final_v4', JSON.stringify(db));
-        renderAll();
-        if(document.getElementById('allocations').classList.contains('active')) renderAllocations();
-        if(document.getElementById('dash').classList.contains('active')) updateDash();
+    // ========== GLOBAL DATABASE OBJECT (in-memory) ==========
+    let db = {
+        items: [],
+        stock: {},
+        cash: [],
+        stock_logs: [],
+        meterReadings: [],
+        audit: [],
+        pass: '12',
+        adminCode: '11',
+        env: { milk: [], elec: [], misc: [] }
+    };
+
+    // Helper: migrate default structure
+    function ensureDbStructure() {
+        if (!db.audit) db.audit = [];
+        if (!db.meterReadings) db.meterReadings = [];
+        if (!db.env) db.env = { milk: [], elec: [], misc: [] };
+        if (!db.cash) db.cash = [];
+        if (!db.stock_logs) db.stock_logs = [];
+        if (!db.stock) db.stock = {};
+        if (!db.items) db.items = [];
+        db.items.forEach(i => { if (i.minLevel === undefined) i.minLevel = 5; });
     }
+
+    // Save to localStorage (sync) + Firestore (async)
+    function save() {
+        // 1. Save to localStorage as backup
+        localStorage.setItem('irfan_final_v4', JSON.stringify(db));
+        // 2. Sync to Firestore in background
+        firestore.collection('erpData').doc(DB_DOC_ID).set({ data: db })
+            .then(() => console.log("✅ Firestore sync OK"))
+            .catch(err => console.warn("Firestore sync error:", err));
+        // Trigger UI updates
+        renderAll();
+        if (document.getElementById('allocations').classList.contains('active')) renderAllocations();
+        if (document.getElementById('dash').classList.contains('active')) updateDash();
+        if (document.getElementById('meter').classList.contains('active')) calcMeterAvg();
+        if (document.getElementById('home').classList.contains('active')) updateHome();
+    }
+
+    // Load from Firestore first, fallback to localStorage
+    async function loadFromCloud() {
+        try {
+            const doc = await firestore.collection('erpData').doc(DB_DOC_ID).get();
+            if (doc.exists && doc.data().data) {
+                db = doc.data().data;
+                ensureDbStructure();
+                localStorage.setItem('irfan_final_v4', JSON.stringify(db));
+                console.log("✅ Data loaded from Firestore");
+            } else {
+                // Firestore empty: load from localStorage if exists
+                let localRaw = localStorage.getItem('irfan_final_v4');
+                if (localRaw) {
+                    db = JSON.parse(localRaw);
+                    ensureDbStructure();
+                    console.log("📀 Loaded from localStorage, syncing to Firestore...");
+                    await firestore.collection('erpData').doc(DB_DOC_ID).set({ data: db });
+                } else {
+                    // fresh start
+                    ensureDbStructure();
+                    await firestore.collection('erpData').doc(DB_DOC_ID).set({ data: db });
+                }
+            }
+        } catch (e) {
+            console.warn("Firestore load failed, using localStorage fallback", e);
+            let localRaw = localStorage.getItem('irfan_final_v4');
+            if (localRaw) {
+                db = JSON.parse(localRaw);
+                ensureDbStructure();
+            } else {
+                ensureDbStructure();
+            }
+        }
+        // final UI rendering
+        if (sessionStorage.getItem('logged')) {
+            setDates();
+            renderAll();
+            updateDash();
+            updateHome();
+            if (document.getElementById('meter').classList.contains('active')) calcMeterAvg();
+            if (document.getElementById('allocations').classList.contains('active')) renderAllocations();
+        }
+    }
+
+    // ========== ORIGINAL FUNCTIONS (unchanged except save calls preserved) ==========
     function extractName(s) { if(!s) return ''; let i=s.lastIndexOf(' ('); return i===-1?s.trim():s.substring(0,i).trim(); }
     function getItemCode(name) { let it=db.items.find(i=>i.name===name); return it?it.id:'???'; }
     function addAudit(mod, det) { db.audit.unshift({time:new Date().toISOString(), module:mod, details:det}); if(db.audit.length>200) db.audit.pop(); save(); }
 
-    // ========== LOGIN ==========
+    // LOGIN
     function doLogin() {
         if(document.getElementById('user').value==='irfan' && document.getElementById('pass').value===db.pass) {
             document.getElementById('login-screen').style.display='none';
@@ -579,6 +653,7 @@
             setDates(); renderAll(); updateDash(); updateHome();
         }
         if(localStorage.getItem('theme')==='light') document.body.classList.add('light-mode');
+        loadFromCloud(); // startup: load from cloud/localStorage
     }
     function tab(id, el) {
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -602,7 +677,7 @@
         } else alert('Wrong Admin Code!');
     }
 
-    // ========== ITEM MASTER ==========
+    // ITEM MASTER
     function addMaster() {
         let name = document.getElementById('mName').value.trim();
         let minLevel = parseInt(document.getElementById('mMinLevel').value) || 5;
@@ -645,7 +720,7 @@
         let st = db.stock[name]; document.getElementById('sOutAvail').value = st?st.qty:'0';
     }
 
-    // ========== INVENTORY ==========
+    // INVENTORY
     function stockIn() {
         let name = extractName(document.getElementById('sSearch').value);
         let date = document.getElementById('sDate').value, q=parseFloat(document.getElementById('sQty').value), p=parseFloat(document.getElementById('sPrice').value);
@@ -682,7 +757,7 @@
         document.getElementById('cardBody').innerHTML = logs.map(l=>{ let i=l.type==='IN'?l.qty:0, o=l.type==='OUT'?l.qty:0; bal+=i-o; return `<tr><td>${l.date}</td><td>${l.type}</td><td>${i||'-'}</td><td>${o||'-'}</td><td>${l.price.toFixed(2)}</td><td><b>${bal}</b></td></tr>`; }).join('')||'<tr><td colspan="6">No data</td></tr>';
     }
 
-    // ========== CASHBOOK ==========
+    // CASHBOOK
     function addCash() {
         let d=document.getElementById('cDate').value, t=document.getElementById('cType').value, ds=document.getElementById('cDesc').value, a=parseFloat(document.getElementById('cAmt').value);
         if(!d||!ds||isNaN(a)) return;
@@ -692,7 +767,7 @@
         document.getElementById('cDesc').value=''; document.getElementById('cAmt').value='';
     }
 
-    // ========== METER ==========
+    // METER
     function addMeter() {
         let d=document.getElementById('meterDate').value, v=parseFloat(document.getElementById('meterRead').value);
         if(!d||isNaN(v)) return;
@@ -727,7 +802,7 @@
         document.getElementById('avgDailyText').innerText = val.toFixed(2);
     }
 
-    // ========== HOME & DASHBOARD ==========
+    // HOME & DASHBOARD
     function updateHome() {
         document.getElementById('hs-items').innerText = db.items.length;
         let stockVal = Object.values(db.stock).reduce((a,s)=>a+s.qty*s.price,0);
@@ -748,11 +823,9 @@
         document.getElementById('d-stock').innerText = 'RS '+stockVal.toLocaleString();
         document.getElementById('d-profit').innerText = 'RS '+net.toLocaleString();
 
-        // Total Cash (net cash)
         let cashNet = inc - exp;
         document.getElementById('d-cash').innerText = 'RS '+cashNet.toLocaleString();
 
-        // Allocated Funds (remaining in envelopes)
         let totalAllocRemaining = 0;
         ['milk','elec','misc'].forEach(k => {
             let entries = db.env[k] || [];
@@ -762,17 +835,15 @@
         });
         document.getElementById('d-alloc').innerText = 'RS '+totalAllocRemaining.toLocaleString();
 
-        // Inventory Expense (total value of consumed stock)
         let invExp = db.stock_logs.filter(l=>l.type==='OUT').reduce((sum,l)=> sum + (l.qty * l.price), 0);
         document.getElementById('d-invexp').innerText = 'RS '+invExp.toLocaleString();
 
-        // ★ Available Cash = Total Cash - Allocated Funds
         let availableCash = cashNet - totalAllocRemaining;
         document.getElementById('d-availcash').innerText = 'RS '+availableCash.toLocaleString();
 
-        if(donutChart) donutChart.destroy();
+        if(window.donutChart) window.donutChart.destroy();
         let ctx = document.getElementById('donutChart').getContext('2d');
-        donutChart = new Chart(ctx, {
+        window.donutChart = new Chart(ctx, {
             type: 'doughnut',
             data: { labels:['Income','Expense','Stock Value'], datasets:[{ data:[inc, exp, stockVal], backgroundColor:['#f0b90b','#ff3860','#5a5a8a'], borderColor:'#14141e', borderWidth:3, hoverBorderColor:'#f0b90b' }] },
             options: { cutout:'72%', plugins:{ legend:{ display:false } }, animation:{ animateRotate:true, duration:800 } }
@@ -805,7 +876,7 @@
         document.getElementById('tickerText').innerHTML = msgs.length?msgs.join(' &nbsp;|&nbsp; '):'✅ All stocks above minimum level.';
     }
 
-    // ========== DELETE / EDIT ==========
+    // DELETE/EDIT helpers
     function delItem(id) { if(confirm('Delete item?')) { db.items=db.items.filter(i=>i.id!==id); save(); } }
     function delCash(id) { if(confirm('Delete cash entry?')) { db.cash=db.cash.filter(c=>c.id!==id); save(); } }
     function editCash(id) {
@@ -909,7 +980,7 @@
         save();
     }
 
-    // ========== REPORTS ==========
+    // REPORTS
     function genRep(type, format) {
         let from=document.getElementById('repFrom').value, to=document.getElementById('repTo').value;
         if(!from||!to) { alert('Select dates'); return; }
@@ -987,7 +1058,7 @@
         }
     }
 
-    // ========== UTILS ==========
+    // UTILS
     function exportBackup() { let blob=new Blob([JSON.stringify(db)],{type:'application/json'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='IrfanBackup.json'; a.click(); addAudit('Admin','Backup exported'); }
     function importBackup(input) { let reader=new FileReader(); reader.onload=function(){ try{ db=JSON.parse(reader.result); if(!db.audit) db.audit=[]; if(!db.meterReadings) db.meterReadings=[]; if(!db.env) db.env = { milk:[], elec:[], misc:[] }; db.items.forEach(i=>{ if(i.minLevel===undefined) i.minLevel=5; }); save(); alert('Imported!'); location.reload(); }catch(e){ alert('Invalid file'); } }; if(input.files[0]) reader.readAsText(input.files[0]); }
     function toggleTheme() { document.body.classList.toggle('light-mode'); localStorage.setItem('theme', document.body.classList.contains('light-mode')?'light':'dark'); if(document.getElementById('dash').classList.contains('active')) updateDash(); }
@@ -996,7 +1067,7 @@
     function changeAdminCode() { let c=document.getElementById('newAdminCode').value; if(c) { db.adminCode=c; save(); alert('Admin code updated'); } else alert('Enter new code'); }
     function clearAudit() { if(confirm('Clear audit log?')) { db.audit=[]; save(); } }
 
-    // ========== ALLOCATION TRACKER ==========
+    // ALLOCATION TRACKER
     function getEnvKey(cat) {
         if(cat==='Milk Powder') return 'milk';
         if(cat==='Electricity') return 'elec';
@@ -1071,38 +1142,5 @@
         save();
     }
 </script>
-
-<!-- Firebase Initialization (Compat / Global) -->
-<script>
-    // Your web app's Firebase configuration
-   firebaseConfig = {
-  apiKey: "AIzaSyApS8WHJLTui4r0xMCX_5rXEu8B4-7a7MI",
-  authDomain: "irfan-c1be0.firebaseapp.com",
-  projectId: "irfan-c1be0",
-  storageBucket: "irfan-c1be0.firebasestorage.app",
-  messagingSenderId: "561044513175",
-  appId: "1:561044513175:web:5c8b977fa334c3ecc1a4d2",
-  measurementId: "G-NK718RB038"
-};
-
-    // Initialize Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const analytics = firebase.analytics();
-    console.log('Firebase initialized successfully ✅');
-</script>
-</body><!-- Firebase setup -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzasyAps8WHJLTuI4r0xMCX_5rXEu8B4-7a7MI",
-    authDomain: "irfan-c1be0.firebaseapp.com",
-    projectId: "irfan-c1be0",
-    storageBucket: "irfan-c1be0.firebasestorage.app",
-    messagingSenderId: "561044513175",
-    appId: "1:561044513175:web:5c8b977fa334c3ecc1a4d2"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  console.log("Firebase ready");
-</script>
+</body>
 </html>
